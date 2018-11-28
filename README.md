@@ -1,14 +1,16 @@
 
 # Social Network Analysis : Ego Networks
 
+
+## Introduction
 In this lesson, we shall move on with our discussion around identifying communities and also identifying the central nodes in communities. So we are effectively mogving on from node centrality, community identification and now finding nodes of central importance in a community. This could be a challenging problem due to high level of randomness in social interaction networks (physical or on-line). We shall look at approach called the ISland method, and ego networks that make use of this approach. 
 
 ## Objectives
 
 You will be able to:
 
-- Understand and explain what is the Island Method for finding important communities. 
-- Identify Ego networks around specific individuals in a community. 
+- Understand and explain what the Island Method for finding important communities is 
+- Identify Ego networks around specific individuals in a community
     
 
 ## The ISLAND Method
