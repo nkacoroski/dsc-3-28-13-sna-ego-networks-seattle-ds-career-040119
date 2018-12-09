@@ -151,8 +151,10 @@ The `ego_graph` function returns a networkx graph object, and all the usual metr
 
 
 ```python
-print(len(list(nx.ego_graph(cc,'justinbieber'))))
-nx.draw(nx.ego_graph(cc,'justinbieber'), with_labels=True, alpha =0.5)
+bieber = nx.ego_graph(largest_component,'justinbieber')
+nx.draw(bieber, with_labels=True, alpha =0.5)
+
+print(len(list(nx.ego_graph(largest_component,'justinbieber'))))
 ```
 
     14
@@ -166,12 +168,17 @@ Let us now explore a celebrity of a different kind "Wael Ghonim", the face of th
 
 
 ```python
-ghonim= nx.Graph(nx.ego_graph(cc,'Ghonim', radius=1))
+ghonim= nx.ego_graph(largest_component,'Ghonim')
 nx.draw(ghonim, alpha =0.5)
+
+print(len(list(nx.ego_graph(largest_component,'Ghonim'))))
 ```
 
+    730
 
-![png](index_files/index_20_0.png)
+
+
+![png](index_files/index_20_1.png)
 
 
 Wael Ghonim have a vastly larger retweet network (despite having fewer followers than Bieber).
@@ -183,17 +190,20 @@ Another metric for identifying important communities is called clustering coeffi
 
 
 ```python
-nx.average_clustering(ghonim), nx.average_clustering(bieb)
+bieber = nx.Graph(nx.ego_graph(largest_component,'justinbieber', radius=2))
+ghonim = nx.Graph(nx.ego_graph(largest_component,'Ghonim', radius=2))
+
+nx.average_clustering(ghonim), nx.average_clustering(bieber)
 ```
 
 
 
 
-    (0.2261351848981228, 0.0)
+    (0.043322544756993105, 0.12727272727272726)
 
 
 
-His clustering coefficient shows that he is a pure broadcaster and is not embedded in a trust network of fans or, at least, he is not in a trust network that cares about world politics. Wael Ghonim have a vastly larger retweet network (despite having fewer followers than Bieber), his ego network is a network of trust where people retweet messages from him and from each other.
+Bieber's clustering coefficient shows that he is a pure broadcaster and is not embedded in a trust network of fans or, at least, he is not in a trust network that cares about world politics. Wael Ghonim have a vastly larger retweet network (despite having fewer followers than Bieber), his ego network is a network of trust where people retweet messages from him and from each other.
 
 In our following lab, we shall look into these concepts into more detail and build a recommendation system according to the relationships that we can find in a bipartite graph. 
 
