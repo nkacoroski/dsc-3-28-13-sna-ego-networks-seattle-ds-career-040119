@@ -93,7 +93,7 @@ nx.draw(ego_graph, with_labels=True); plt.show()
 ![png](index_files/index_9_0.png)
 
 
-So we see above that node 0 is now our ego node, and the network consists of all the nodes connected to node 0 with radius = 1 , i.e. sudden neighbors. For this ego, we see that altars are not interconnected. . Let's increase the radius to see the impact. 
+So we see above that node 0 is now our ego node, and the network consists of all the nodes connected to node 0 with radius = 1 , i.e. sudden neighbors. For this ego, we see that altars are not interconnected. Let's increase the radius to see the impact. 
 
 
 ```python
@@ -109,7 +109,7 @@ nx.draw(ego_graph, with_labels=True); plt.show()
 ![png](index_files/index_11_0.png)
 
 
-Great, this is a bit more revealing. We can see a neighbourhood with radius 2 and now some altars are interconnected to each other. We also see above that some nodes, which are not directly connected to the ego node are still included in this ego network as they are connected to the altars. we can similarly increase the radium even more to grow the world around the ego and how different entities in this world are interconnected. 
+Great, this is a bit more revealing. We can see a neighbourhood with radius 2 and now some altars are interconnected to each other. We also see above that some nodes, which are not directly connected to the ego node are still included in this ego network as they are connected to the altars. we can similarly increase the radius even more to grow the world around the ego and how different entities in this world are interconnected. 
 
 If we think of above network as titles of books and the link between these nodes to indicate co-purchases, such a network can come in handy for building a recommendation system as we shall soon see. 
 
