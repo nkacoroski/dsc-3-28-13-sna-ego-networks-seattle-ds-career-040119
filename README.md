@@ -1,5 +1,5 @@
 
-# Social Network Analysis : Ego Networks
+# Social Network Analysis: Ego Networks
 
 
 ## Introduction
