@@ -1,191 +1,965 @@
 
-# Social Network Analysis: Ego Networks
+# Recommendation Systems
 
 
 ## Introduction
-In this lesson, we shall move on with our discussion around identifying communities and also identifying the central nodes in communities. So we are essentially moving on from node centrality, community identification and now finding nodes of central importance in a community. This could be a challenging problem due to high level of randomness in social interaction networks (physical or on-line). We shall look at approach called the Ego networks that facilitate this approach. 
+
+In this lesson, you'll investigate a very different take on networks and investigate how recommendation systems can be built off of networks. 
 
 ## Objectives
 
 You will be able to:
+* Outline preliminary methods for developing recommendations sytems
 
 
-- Identify Ego networks around specific individuals in a community
-- Extract ego network with a given neighborhood radius 
-- Understand Clustering Co-efficient and calculate in `networkx`
-    
+## Motivating Ideas
 
-## Ego Networks
+When recommending items to a user whether they be books, music, movies, restaurants or other consumer products one is typically trying to find the preferences of other users with similar tastes who can provide useful suggestions for the user in question. With this, examining the relationships amongst users and their previous preferences can help identify which users are most similar to each other. Alternatively, one can examine the relationships between the items themselves. These two perspectives underlying the two predominant means to recommendation systems: item based and people based. 
 
-In our discussion around networks so far, we have considered a global structure of networks where the focus of analysis was on the whole network a a group. We explained interactions between different nodes in a network in terms of concentration of connections, direction of flow of information etc. This helped us understand and calculate different centrality measures of nodes, and detection of communities within a network. The networks , either directed or undirected , weighted or unweighted presented a holistic view of the network like the one shown below:
+## Collaborative Filtering
 
-<img src="sofar.png" width=500>
+One popular implementation of this intuition is collaborative filtering. This starts by constructing a matrix of user or item similarities. For example, you might calculate the distance between users based on their mutual ratings of items. From there, you then select the top n similar users or items. Finally, in the case of users, you then project an anticipated rating for other unreviewed items of the user based on the preferences of these similar users. Once sorted, these projections can be then used to serve recommendations to othe user.
 
-__Ego networks__ (also known as __Personal Networks__ in a human social network analysis) consist of a focal node known as the __Ego__,  and the nodes to whom ego is directly connected to, called __Alters__, with edges showing links between ego to altars or between altars. Each alter in an ego network can have it's own ego network, and all ego networks interlock to form the social network. In such a network, egos could be human beings or objects like products or services in a business context. A simple ego network from an ego's perspective is shown below:
+## Importing a DataSet
 
-<img src="ego_n.png" width=500>
+To start, you'll need to import a dataset as usual. For this lesson, you'll take a look at the Movie-Lens dataset which contains movie reviews for a large number of individuals. While the dataset is exclusively older movies, it should still make for an interesting investigation.
 
 
+```python
+import pandas as pd
+```
 
 
-The focus of analysis in a ego network is on individual egos in turn. These focus on the structure, composition and shape of links between egos and altars in an attempt to identify the "Importance" of an ego node based on how its altars are connected to it and among themselves. 
+```python
+df = pd.read_csv('ml-100k/u.data', delimiter="\t", names=["user_id" , "item_id" , "rating" , "timestamp"])
+df.head()
+```
 
-In this type of analysis, each ego based network is treated as a world of its own. We do not consider the nodes and edges which are not present in the current ego network. This can be shown with a simple examples below:
 
-<img src="egos_n.png" width=500>
-So each ego network is treated as a __separate case__, independent of other unconnected elements in the network. 
 
-## When to use Ego Network Analysis
 
-Ego network analyses provide in-depth answers to otherwise complicated analytical questions. The applications of such analysis range from personal interaction analysis in human social networks to recommendation systems, which we shall look at in our next lab. 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
-- If your analytical question is about phenomena of or affecting individual entities across different settings (networks) use the ego-centric approach. Here the cases include Individuals, organizations, nations, etc.
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
 
-- If, on the other hand, the analysis is about different patterns of interaction/association within defined groups
-(networks) having an ego node, use the socio-centric approach. Cases here include finding who are the key nodes in a group, tracking information traversal in a group etc. 
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>item_id</th>
+      <th>rating</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>196</td>
+      <td>242</td>
+      <td>3</td>
+      <td>881250949</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>186</td>
+      <td>302</td>
+      <td>3</td>
+      <td>891717742</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>22</td>
+      <td>377</td>
+      <td>1</td>
+      <td>878887116</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>244</td>
+      <td>51</td>
+      <td>2</td>
+      <td>880606923</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>166</td>
+      <td>346</td>
+      <td>1</td>
+      <td>886397596</td>
+    </tr>
+  </tbody>
+</table>
+</div>
 
-### Ego networks and recommendation systems
 
-For a business like amazon, involved in sales of a number of consumer products, ego networks can help us develop a simple yet powerful recommendation system for product recommendation based on customer's interest in a product, or purchase of a product. If we look at a transaction and identify the product e.g. a book, we can easily use ego network analysis to identify co-purchases with that book (i.e. other similar books purchased by users, who also purchase the book we are treating as an ego), this information can help us make effective item-item recommendations. 
 
-<img src="books_n.jpg" width=600>
+As you can see, this dataset could easily be represented as a bimodal weighted network graph connecting user nodes with movies nodes with rating weights. Let's also import some metadata concerning the movies to bring the scenario to life.
 
-In our next lab, we will attempt to develop such a recommendation system using Ego Network Analysis. Let's first see how to extract ego networks in python. 
 
-## Ego network Extraction in `networkx`
+```python
+col_names = ["movie_id" ,"movie_title" ," release_date" ," video_release_date" ,
+             "IMDb_URL" ,"unknown"," Action","Adventure", "Animation",
+             "Childrens", "Comedy","Crime" ,"Documentary", "Drama","Fantasy",
+             "Film-Noir", "Horror", "Musical" ,"Mystery" ,"Romance" ,"Sci-Fi",
+             "Thriller","War" ,"Western"
+            ]
+movies = pd.read_csv('ml-100k/u.item', delimiter="|", encoding='latin1', names=col_names)
+movies.head()
+```
 
-Below is a simple routine that creates a random Erdos Reyno graph and attempts to extract different ego networks from the point of view of a given node. let's first the a random network. 
 
-### Create a random network 
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>movie_id</th>
+      <th>movie_title</th>
+      <th>release_date</th>
+      <th>video_release_date</th>
+      <th>IMDb_URL</th>
+      <th>unknown</th>
+      <th>Action</th>
+      <th>Adventure</th>
+      <th>Animation</th>
+      <th>Childrens</th>
+      <th>...</th>
+      <th>Fantasy</th>
+      <th>Film-Noir</th>
+      <th>Horror</th>
+      <th>Musical</th>
+      <th>Mystery</th>
+      <th>Romance</th>
+      <th>Sci-Fi</th>
+      <th>Thriller</th>
+      <th>War</th>
+      <th>Western</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>Toy Story (1995)</td>
+      <td>01-Jan-1995</td>
+      <td>NaN</td>
+      <td>http://us.imdb.com/M/title-exact?Toy%20Story%2...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>GoldenEye (1995)</td>
+      <td>01-Jan-1995</td>
+      <td>NaN</td>
+      <td>http://us.imdb.com/M/title-exact?GoldenEye%20(...</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>Four Rooms (1995)</td>
+      <td>01-Jan-1995</td>
+      <td>NaN</td>
+      <td>http://us.imdb.com/M/title-exact?Four%20Rooms%...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>Get Shorty (1995)</td>
+      <td>01-Jan-1995</td>
+      <td>NaN</td>
+      <td>http://us.imdb.com/M/title-exact?Get%20Shorty%...</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>Copycat (1995)</td>
+      <td>01-Jan-1995</td>
+      <td>NaN</td>
+      <td>http://us.imdb.com/M/title-exact?Copycat%20(1995)</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>...</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 24 columns</p>
+</div>
+
+
+
+## Transforming the Data Part I
+
+
+```python
+user_ratings = df.pivot(index='user_id', columns='item_id', values='rating')
+user_ratings.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>item_id</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+      <th>7</th>
+      <th>8</th>
+      <th>9</th>
+      <th>10</th>
+      <th>...</th>
+      <th>1673</th>
+      <th>1674</th>
+      <th>1675</th>
+      <th>1676</th>
+      <th>1677</th>
+      <th>1678</th>
+      <th>1679</th>
+      <th>1680</th>
+      <th>1681</th>
+      <th>1682</th>
+    </tr>
+    <tr>
+      <th>user_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>5.0</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+      <td>5.0</td>
+      <td>4.0</td>
+      <td>1.0</td>
+      <td>5.0</td>
+      <td>3.0</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>4.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>2.0</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 1682 columns</p>
+</div>
+
+
+
+## Filling Null Values
+
+
+```python
+for col in user_ratings:
+    mean = user_ratings[col].mean()
+    user_ratings[col]=user_ratings[col].fillna(value=mean)
+user_ratings.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>item_id</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+      <th>7</th>
+      <th>8</th>
+      <th>9</th>
+      <th>10</th>
+      <th>...</th>
+      <th>1673</th>
+      <th>1674</th>
+      <th>1675</th>
+      <th>1676</th>
+      <th>1677</th>
+      <th>1678</th>
+      <th>1679</th>
+      <th>1680</th>
+      <th>1681</th>
+      <th>1682</th>
+    </tr>
+    <tr>
+      <th>user_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1</th>
+      <td>5.000000</td>
+      <td>3.000000</td>
+      <td>4.000000</td>
+      <td>3.000000</td>
+      <td>3.000000</td>
+      <td>5.000000</td>
+      <td>4.000000</td>
+      <td>1.000000</td>
+      <td>5.000000</td>
+      <td>3.000000</td>
+      <td>...</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>4.000000</td>
+      <td>3.206107</td>
+      <td>3.033333</td>
+      <td>3.550239</td>
+      <td>3.302326</td>
+      <td>3.576923</td>
+      <td>3.798469</td>
+      <td>3.995434</td>
+      <td>3.896321</td>
+      <td>2.000000</td>
+      <td>...</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3.878319</td>
+      <td>3.206107</td>
+      <td>3.033333</td>
+      <td>3.550239</td>
+      <td>3.302326</td>
+      <td>3.576923</td>
+      <td>3.798469</td>
+      <td>3.995434</td>
+      <td>3.896321</td>
+      <td>3.831461</td>
+      <td>...</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3.878319</td>
+      <td>3.206107</td>
+      <td>3.033333</td>
+      <td>3.550239</td>
+      <td>3.302326</td>
+      <td>3.576923</td>
+      <td>3.798469</td>
+      <td>3.995434</td>
+      <td>3.896321</td>
+      <td>3.831461</td>
+      <td>...</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>4.000000</td>
+      <td>3.000000</td>
+      <td>3.033333</td>
+      <td>3.550239</td>
+      <td>3.302326</td>
+      <td>3.576923</td>
+      <td>3.798469</td>
+      <td>3.995434</td>
+      <td>3.896321</td>
+      <td>3.831461</td>
+      <td>...</td>
+      <td>3.0</td>
+      <td>4.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>1.0</td>
+      <td>3.0</td>
+      <td>2.0</td>
+      <td>3.0</td>
+      <td>3.0</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 1682 columns</p>
+</div>
+
+
+
+## Creating a User Matrix
+
+To create a user matrix, you must calculate the distance between users. Choosing an appropriate distance metric for this is crucial. In this instance, a simple Euclidean distance is apt to be appropriate, but in other instances an alternative metric such as cosine distance might be a more sensible choice.
 
 
 ```python
 import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
-
-# create some test network
-graph = nx.erdos_renyi_graph(100, 0.05)
-nx.draw(graph, with_labels=True); plt.show()
 ```
-
-
-![png](index_files/index_7_0.png)
-
-
-## Extract Ego network for a given node
-
-So above we see a partially connected graph with connection buult on given probability value i.e. 0.05. You can try different vaklues to see the impact on the output. 
-
-Let's try to extract the ego network for node 0 using `nx.ego_graph()`
 
 
 ```python
-# create an ego-graph for some node
-node = 0
-ego_graph = nx.ego_graph(graph, node, radius=1)
-
-# plot to check
-nx.draw(ego_graph, with_labels=True); plt.show()
+u1 = user_ratings.iloc[1]
+u2 = user_ratings.iloc[2]
+def distance(v1,v2):
+    return np.sqrt(np.sum((v1-v2)**2))
+distance(u1,u2)
 ```
 
 
-![png](index_files/index_9_0.png)
 
 
-So we see above that node 0 is now our ego node, and the network consists of all the nodes connected to node 0 with radius = 1 , i.e. sudden neighbors. For this ego, we see that altars are not interconnected. . Let's increase the radius to see the impact. 
+    11.084572689977236
+
+
 
 
 ```python
-# create an ego-graph for some node
-node = 0
-ego_graph = nx.ego_graph(graph, node, radius=2)
+start = datetime.datetime.now()
+user_matrix = []
+for i, row in enumerate(user_ratings.index):
+    u1 = user_ratings[row]
+    user_distances = [entry[i] for entry in user_matrix] #Matrix is symetric, so fill in values for previously examined users
+    for j, row2 in enumerate(user_ratings.index[i:]):
+        u2 = user_ratings[row2]
+        d = distance(u1,u2)
+        user_distances.append(d)
+    user_matrix.append(user_distances)
+user_similarities = pd.DataFrame(user_matrix)
 
-# plot to check
-nx.draw(ego_graph, with_labels=True); plt.show()
+end = datetime.datetime.now()
+elapsed = end - start
+print(elapsed)
+
+user_similarities.head()
 ```
 
+    0:04:54.550740
 
-![png](index_files/index_11_0.png)
 
 
-Great, this is a bit more revealing. We can see a neighborhood with radius 2 and now some altars are interconnected to each other. We also see above that some nodes, which are not directly connected to the ego node are still included in this ego network as they are connected to the altars. we can similarly increase the radius even more to grow the world around the ego and how different entities in this world are interconnected. 
 
-If we think of above network as titles of books and the link between these nodes to indicate co-purchases, such a network can come in handy for building a recommendation system as we shall soon see. 
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+      <th>7</th>
+      <th>8</th>
+      <th>9</th>
+      <th>...</th>
+      <th>933</th>
+      <th>934</th>
+      <th>935</th>
+      <th>936</th>
+      <th>937</th>
+      <th>938</th>
+      <th>939</th>
+      <th>940</th>
+      <th>941</th>
+      <th>942</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.000000</td>
+      <td>29.936426</td>
+      <td>34.042510</td>
+      <td>25.599772</td>
+      <td>27.165580</td>
+      <td>22.301547</td>
+      <td>26.215828</td>
+      <td>23.496667</td>
+      <td>25.937816</td>
+      <td>21.335516</td>
+      <td>...</td>
+      <td>36.156616</td>
+      <td>26.799824</td>
+      <td>19.717999</td>
+      <td>25.405054</td>
+      <td>36.780720</td>
+      <td>21.812402</td>
+      <td>51.343159</td>
+      <td>32.668768</td>
+      <td>23.666899</td>
+      <td>24.014478</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>29.936426</td>
+      <td>0.000000</td>
+      <td>16.182447</td>
+      <td>19.619520</td>
+      <td>13.942961</td>
+      <td>17.161477</td>
+      <td>28.271802</td>
+      <td>29.750381</td>
+      <td>30.305192</td>
+      <td>23.904303</td>
+      <td>...</td>
+      <td>16.059514</td>
+      <td>11.520504</td>
+      <td>25.495994</td>
+      <td>14.214126</td>
+      <td>15.803102</td>
+      <td>17.058759</td>
+      <td>28.922541</td>
+      <td>13.417856</td>
+      <td>14.396717</td>
+      <td>14.214562</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>34.042510</td>
+      <td>16.182447</td>
+      <td>0.000000</td>
+      <td>24.390253</td>
+      <td>16.425187</td>
+      <td>20.838161</td>
+      <td>32.394615</td>
+      <td>35.050119</td>
+      <td>33.991216</td>
+      <td>28.574367</td>
+      <td>...</td>
+      <td>13.944501</td>
+      <td>13.948331</td>
+      <td>30.359617</td>
+      <td>17.340413</td>
+      <td>13.335128</td>
+      <td>21.472178</td>
+      <td>24.388253</td>
+      <td>13.221221</td>
+      <td>19.026807</td>
+      <td>18.205507</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>25.599772</td>
+      <td>19.619520</td>
+      <td>24.390253</td>
+      <td>0.000000</td>
+      <td>18.809007</td>
+      <td>15.341923</td>
+      <td>24.285722</td>
+      <td>23.233123</td>
+      <td>24.219603</td>
+      <td>18.588349</td>
+      <td>...</td>
+      <td>24.992752</td>
+      <td>16.263677</td>
+      <td>18.954594</td>
+      <td>16.038223</td>
+      <td>25.407118</td>
+      <td>14.828270</td>
+      <td>39.984010</td>
+      <td>22.005445</td>
+      <td>14.904607</td>
+      <td>15.217085</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>27.165580</td>
+      <td>13.942961</td>
+      <td>16.425187</td>
+      <td>18.809007</td>
+      <td>0.000000</td>
+      <td>13.840300</td>
+      <td>25.698150</td>
+      <td>27.076469</td>
+      <td>26.955596</td>
+      <td>20.865873</td>
+      <td>...</td>
+      <td>16.513384</td>
+      <td>9.004673</td>
+      <td>21.955017</td>
+      <td>11.236040</td>
+      <td>16.516795</td>
+      <td>13.212617</td>
+      <td>31.007449</td>
+      <td>13.597272</td>
+      <td>12.242182</td>
+      <td>11.385938</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 943 columns</p>
+</div>
+
+
+
+## Calculating Recommendations
+
+Now on to the recommendations! To do this, you'll select the top n users who are similar to the user in question. From there, you'll then predict the current user's rating of a movie based on the average of the closest users ratings. Finally, you'll then sort these ratings from highest to lowest and remove movies that the current user has already rated and seen. 
 
 
 ```python
-# create an ego-graph for some node
-node = 0
-ego_graph = nx.ego_graph(graph, node, radius=3)
-
-# plot to check
-nx.draw(ego_graph, with_labels=True); plt.show()
+def recommend_movies(user, user_similarities, user_ratings, df, n_users=20, n_items=10):
+    """n is the number of similar users who you wish to use to generate recommendations."""
+    top_n_similar_users = user_similarities[user-1].drop(user-1).sort_values().index[:n_users] #User_Similarities Offset By 1 and Must Remove Current User
+    top_n_similar_users = [i+1 for i in top_n_similar_users] #Again, fixing the offset of user_ids
+    already_watched = set(df[df.user_id==0].item_id.unique())
+    unwatched = set(df.item_id.unique()) - already_watched
+    projected_user_reviews = user_ratings[user_ratings.index.isin(top_n_similar_users)].mean()[list(unwatched)].sort_values(ascending=False)
+    return projected_user_reviews[:n_items]
 ```
-
-
-![png](index_files/index_13_0.png)
-
-
-So our ego network grows more complicated as we increase the radius. Studying such a network would require knowledge of the domain that these nodes belong to. 
-
-## Clustering Co-efficient
-
-Another metric for identifying important communities is called clustering coefficient, which measures the proportion of your friends that are also friends with each other (i.e., what amount of mutual trust people have for each other). This metric can be applied to entire networks but in a large network with widely varying        densities and multiple cores, average clustering is difficult to interpret. In ego networks, the interpretation is simple dense ego networks with a lot of mutual trust have a high clustering coefficient.
-![](cc.png)
-
-Let's pick up two random nodes from the graph we created above and see how we can calculate the clustering co-efficient for them using `nx.average_clustering()` method. 
 
 
 ```python
-# Calculate the clustering co-efficient 
-
-node0 = nx.Graph(nx.ego_graph(graph, 2, radius=1))
-node10 = nx.Graph(nx.ego_graph(graph, 10, radius=1))
-
-nx.average_clustering(node0), nx.average_clustering(node10)
+recommend_movies(1, user_similarities, user_ratings, df)
 ```
 
 
 
 
-    (0.0, 0.4777777777777777)
+    item_id
+    1122    5.0
+    814     5.0
+    1500    5.0
+    1536    5.0
+    1653    5.0
+    1599    5.0
+    1467    5.0
+    1189    5.0
+    1201    5.0
+    1293    5.0
+    dtype: float64
 
 
 
-We see that node 0 has a 0 clustering co_efficient, node 10 has higher value of 0.47 i.e. nodes connected to node 10 are interconnected to some degree.  This can be visualized below:
+## Summary
 
-
-```python
-# create an ego-graph for some node
-node = 0
-ego_graph = nx.ego_graph(graph, node, radius=1)
-
-# plot to check
-nx.draw(ego_graph, with_labels=True); plt.show()
-# create an ego-graph for some node
-node = 10
-ego_graph = nx.ego_graph(graph, node, radius=1)
-
-# plot to check
-nx.draw(ego_graph, with_labels=True); plt.show()
-```
-
-
-![png](index_files/index_19_0.png)
-
-
-
-![png](index_files/index_19_1.png)
-
-
-So the fact that node 10 is connected to more altars which are interconnected to each other than node 0 gives node a higher clustering co-efficient.
-
-## Additional Resources
-
-- https://bookdown.org/chen/snaEd/ego-intro.html
-- http://www.analytictech.com/networks/egonet.htm
-- https://www.geeksforgeeks.org/clustering-coefficient-graph-theory/
-
-## Summary 
-In this lesson we looked at the ego networks for identifying the central characters in a large social network. We looked at developing an intuition around development of recommendation systems using this approach. Next We shall apply this approach towards developing a Recommendation System for Amazon.  
+In this lesson you got a proper introduction to recommendation systems using collaborative filtering!
